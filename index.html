@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video-ASTAR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 40px 0;
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            color: #222;
+        }
+        header p {
+            font-size: 1.2em;
+            color: #666;
+        }
+        .authors, .affiliation {
+            font-size: 1em;
+            margin: 10px 0;
+        }
+        .section {
+            margin: 40px 0;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            font-size: 1.8em;
+            color: #222;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section p, .section ul {
+            font-size: 1em;
+            color: #333;
+        }
+        .section ul {
+            padding-left: 20px;
+        }
+        .section img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: #000;
+            margin: 20px 0;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        .result-item {
+            flex: 1;
+            min-width: 128px;
+            text-align: center;
+        }
+        .result-item img {
+            width: 100%;
+            max-width: 300px;
+            border: 1px solid #ddd;
+        }
+        .result-item p {
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+            margin-top: 40px;
+        }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+            .section h2 {
+                font-size: 1.5em;
+            }
+            .results-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 style="text-align:center;">Video-ASTAR: Synthesizing Compositional Videos from Text Description</h1>
+        <!-- <p class="authors">Author Name1<sup>1</sup>, Author Name2<sup>2</sup>, Author Name3<sup>1</sup></p>
+        <p class="affiliation"><sup>1</sup>Your Department, Your University, <sup>2</sup>Another Department, Another University</p>
+        <p>Published at [Conference/Journal Name, Year]</p> -->
+        <div class="links">
+            <!-- <a href="https://arxiv.org/abs/XXXX.XXXXX">Paper</a> -->
+            <!-- [<a href="">Code</a>] -->
+            <!-- <a href="https://your-university.edu/dataset">Data</a> -->
+            <!-- <a href="https://colab.research.google.com/drive/your-colab-link">Colab</a> -->
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="section">
+            <h2>Abstract</h2>
+            <p>
+                Existing pre-trained text-to-video diffusion models can generate high-quality videos, but often struggle with misalignment between the generated content and the input text, particularly while composing scenes with multiple objects. To address this, we propose a simple, training-free approach for compositional video generation from text. We introduce Video-ASTAR, for test-time aggregation and segregation of attention with a novel Centroid Loss to enhance alignment, which enables the generation of multiple objects in the scene, modeling the actions and interactions. We further extend our approach to the Multi-Action video generation setting, where only the described action should vary across a sequence of prompts. To ensure coherent action transitions, we introduce a token-swapping and latent interpolation strategy. Extensive experiments and ablation studies show that our method significantly outperforms baseline approaches, generating videos with improved semantic and compositional consistency with temporal coherence.
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>Overview</h2>
+            <p>
+                The following are the contributions of our work improving text-based video synthesis:
+
+                <ul>
+                    <li> <b>Optimization-Based Framework for Compositional Video Generation:</b> e present a training-free approach that leverages the pre-trained VideoCrafter2 [1] diffusion model to generate videos with compositionally rich and coherent content from textual descriptions. </li>
+                
+                    <li> <b>Centroid Loss for Attention Interaction:</b> We introduce a novel loss function, Centroid Loss, which promotes stronger interaction between entities in the attention maps. This helps maintain consistent and accurate representations of objects and actions throughout the denoising steps in the diffusion process. </li>
+                
+                    <li> <b>ASTAR [2] Inspired Method for Attention Control:</b> To improve attention segregation and retention across video frames, we incorporate ASTAR loss and extend it with a mean-threshold-based mask creation strategy. Specifically, we generate a mask from the first frame using mean attention values and apply this mask consistently across all frames. This enables stable tracking of tokens throughout the video. Additionally, we identify the cross-attention layers within the diffusion model that are most critical to controlling the generation, enabling more targeted manipulation of visual content. </li>                    
+                <ul>
+            </p>
+            <div>
+                <center>
+                <img src="images/compositional_1.png" alt="Framework" width="60%"  height="60%">
+                <p><b>Framework.</b> The figure illustrate VideoCrafter2 (VC2) [1] framework with proposed latent optimization step. The VC2 video latent diffusion model conditions the noisy latent input over the given text prompt, and during the denoising step, the proposed method ensures the attention map attends to each token as per the text. The final denoised latent is then given as input to the pre-trained latent-to-frame decoder network of VC2 for video generation.</p>
+                </center>
+            </div>
+
+            We refer to our overall method as <em>Video-ASTAR</em>, designed for effective compositional video generation.
+        </div>
+
+        <div class="section">
+            <h2>Video-ASTAR</h2>
+            <center><img src="images/compositional_2.png" alt="" width="60%"  height="60%">
+            <p><b>Loss Functions.</b> The figure shows how each loss operates on the attention map generated for each token.</p>
+            </center>
+
+            For compositional video generation, we apply modified ASTAR [2] and Centroid Loss directly to the accumulated attention maps from the Spatial Transformer. While ASTAR was initially proposed for images, we extend it for video frames by adding the temporal dimension to the loss function. We also modified the mask generation method, replacing the graph component computation with mean thresholding <em>i.e.</em>, attention values below the mean are masked to zero and above the mean to one for each frame. The mask from the first video frame is used for the attention retention loss, resulting in stable video generation with rich details.
+
+        </div>
+
+        <div class="section">
+            <center><img src="images/compositional_3.png" alt="">
+            <p><b>Token Visualization.</b> The figure shows the cross-attention map between text and video frame pooled from a downsampling layer in a spatial transformer block of VideoCrafter2 [1].</p>
+            </center>
+        </div>
+
+        <div class="section">
+            <h2>Effect of Optimization Method</h2>
+            <div>
+                <center><img src="images/compositional_4.png" alt="">
+                <p>(a) The figure illustrates the effect of different optimization functions with VideoCrafter2 [1], (b) shows the effect of different parameters on the Video-ASTAR loss.</p>
+                </center>
+            </div> 
+
+            We performed an ablation study to evaluate the effect of different optimization methods on the VideoCrafter2 (VC2) [1] pipeline. As shown in above figures for the given prompts, the baseline VC2 fails to generate the object "bench." Applying the A&E loss [5] successfully recovers the missing object for the first prompt but fails on the second and shows alignment issues for the first prompt. In contrast, incorporating Video-ASTAR recovers the missing entities in both prompts, demonstrating better contextual understanding and consistent generation across video frames.
+            <br/>
+            The Video-ASTAR loss comprises two components: attention segregation and attention retention. Attention segregation minimizes overlap between attention maps of different entities within a frame, while attention retention prevents attention values from fading during denoising by applying an attention mask. The above figure illustrates the impact of different thresholding strategies and mask types. As shown in (b–c), using the median value as a threshold fails to capture all entities described in the text, whereas the mean threshold successfully recovers them. Panel (d–e) demonstrates that applying a binary mask from the first frame across all frames preserves the context, such as accurately maintaining the presence of a "big rock." In our final optimization, we use the mean value as the threshold for generating a binary mask and apply the first frame binary mask across all the video frames.
+
+            <div>
+                <center><img src="images/compositional_5.png" alt="" width="50%"  height="50%">
+                <p>In this figure, we have shown the effect of different methods when integrated with the VideoCrafter2 [1] text-to-video generation network.</p>
+                </center>
+            </div> 
+            
+            In addition to attention segregation and retention, we also used centroid-based loss for compositional generation in Video-ASTAR. The above figure shows a video generated for a given text prompt across different optimization methods on the videocrafter2, where our proposed optimization method helps generate the given entities in the text description.
+
+        </div>
+
+        <div class="section">
+            <h2>Quantitative Comparison</h2>
+            <div>
+                <center><img src="images/compositional_6.png" alt="">
+                <p>Quantitative comparison with baseline methods using Vbench [3] across three different prompt categories on three random seed values. We have reported the average across all the runs.</p>
+                </center>
+            </div> 
+            As shown in the above table, the proposed optimization method achieves competitive performance and, in some cases, outperforms the baseline across all VBench [3] dimensions. Notably, the Multiple Object generation task shows a significant improvement over other methods. This gain can be attributed to the attention retention and centroid loss, which help maintain active attention maps and ensure object attention remains spatially consistent.
+        </div>
+
+        <div class="section">
+            <h2>Results</h2>
+
+            <h3>Multiple Objects</h3>
+            <div class="results-container">
+                <div class="result-item">
+                    <p>Prompts</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2+A&E</p>
+                </div>
+                <div class="result-item">
+                    <p>VICO</p>
+                </div>
+                <div class="result-item">
+                    <p>Ours</p>
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a boat and an airplane</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/1_1_a_boat_and_an_airplane_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/1_2_a_boat_and_an_airplane_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/1_3_a_boat_and_an_airplane_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/1_4_a_boat_and_an_airplane_2.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a bottle and a chair</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/2_1_a_bottle_and_a_chair_4.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/2_2_a_bottle_and_a_chair_4.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/2_3_a_bottle_and_a_chair_4.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/2_4_a_bottle_and_a_chair_4.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a car and a train</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/3_1_a_car_and_a_train_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/3_2_a_car_and_a_train_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/3_3_a_car_and_a_train_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/3_4_a_car_and_a_train_1.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a chair and a couch</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/4_1_a_chair_and_a_couch_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/4_2_a_chair_and_a_couch_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/4_3_a_chair_and_a_couch_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/4_4_a_chair_and_a_couch_1.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>an apple and a cell phone</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/5_1_an_apple_and_a_cell_phone_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/5_2_an_apple_and_a_cell_phone_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/5_3_an_apple_and_a_cell_phone_2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/multiple_gif/5_4_an_apple_and_a_cell_phone_2.gif" alt="">
+                </div>
+            </div>
+
+            <h3>Overall Consistency</h3>
+            <div class="results-container">
+                <div class="result-item">
+                    <p>Prompts</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2+A&E</p>
+                </div>
+                <div class="result-item">
+                    <p>VICO</p>
+                </div>
+                <div class="result-item">
+                    <p>Ours</p>
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>an ice cream is melting on the table.</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/1_1_an_ice_cream_is_melting_on_the_table._0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/1_2_an_ice_cream_is_melting_on_the_table._0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/1_3_an_ice_cream_is_melting_on_the_table._0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/1_4_an_ice_cream_is_melting_on_the_table._0.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>A teddy bear washing the dishes</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/2_1_A_teddy_bear_washing_the_dishes_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/2_2_A_teddy_bear_washing_the_dishes_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/2_3_A_teddy_bear_washing_the_dishes_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/2_4_A_teddy_bear_washing_the_dishes_1.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 0px 0">
+                    <p>Snow rocky mountains peaks canyon. snow blanketed rocky mountains surround and shadow deep canyons. the canyons twist and bend through the high elevated mountain peaks.</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/3_1_Snow_rocky_mountains_peaks_canyon._snow_blanketed_rocky_mountains_surround_and_shadow_deep_canyons._the_canyons_twist_and_bend_through_the_high_elevated_mountain_peaks._1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/3_2_Snow_rocky_mountains_peaks_canyon._snow_blanketed_rocky_mountains_surround_and_shadow_deep_canyons._the_canyons_twist_and_bend_through_the_high_elevated_mountain_peaks._1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/3_3_Snow_rocky_mountains_peaks_canyon._snow_blanketed_rocky_mountains_surround_and_shadow_deep_canyons._the_canyons_twist_and_bend_through_the_high_elevated_mountain_peaks._1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/3_4_Snow_rocky_mountains_peaks_canyon._snow_blanketed_rocky_mountains_surround_and_shadow_deep_canyons._the_canyons_twist_and_bend_through_the_high_elevated_mountain_peaks._1.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>Vincent van Gogh is painting in the room</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/4_1_Vincent_van_Gogh_is_painting_in_the_room_0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/4_2_Vincent_van_Gogh_is_painting_in_the_room_0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/4_3_Vincent_van_Gogh_is_painting_in_the_room_0.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/4_4_Vincent_van_Gogh_is_painting_in_the_room_0.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>A cute fluffy panda eating Chinese food in a restaurant</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/5_1_A_cute_fluffy_panda_eating_Chinese_food_in_a_restaurant_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/5_2_A_cute_fluffy_panda_eating_Chinese_food_in_a_restaurant_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/5_3_A_cute_fluffy_panda_eating_Chinese_food_in_a_restaurant_1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/overall_gif/5_4_A_cute_fluffy_panda_eating_Chinese_food_in_a_restaurant_1.gif" alt="">
+                </div>
+            </div>
+
+            <h3>Spatial Relation</h3>
+            <div class="results-container">
+                <div class="result-item">
+                    <p>Prompts</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2</p>
+                </div>
+                <div class="result-item">
+                    <p>VideoCrafter2+A&E</p>
+                </div>
+                <div class="result-item">
+                    <p>VICO</p>
+                </div>
+                <div class="result-item">
+                    <p>Ours</p>
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a baseball bat on the left of a baseball glove, front view</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/7_1_a_baseball_bat_on_the_left_of_a_baseball_glove,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/7_2_a_baseball_bat_on_the_left_of_a_baseball_glove,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/7_3_a_baseball_bat_on_the_left_of_a_baseball_glove,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/7_4_a_baseball_bat_on_the_left_of_a_baseball_glove,_front_view-2.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a boat on the left of an airplane, front view</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/9_1_a_boat_on_the_left_of_an_airplane,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/9_2_a_boat_on_the_left_of_an_airplane,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/9_3_a_boat_on_the_left_of_an_airplane,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/9_4_a_boat_on_the_left_of_an_airplane,_front_view-3.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>an elephant on the left of a bear, front view</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/3_1_an_elephant_on_the_left_of_a_bear,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/3_2_an_elephant_on_the_left_of_a_bear,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/3_3_an_elephant_on_the_left_of_a_bear,_front_view-3.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/3_4_an_elephant_on_the_left_of_a_bear,_front_view-3.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a parking meter on the right of a bench, front view</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/4_1_a_parking_meter_on_the_right_of_a_bench,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/4_2_a_parking_meter_on_the_right_of_a_bench,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/4_3_a_parking_meter_on_the_right_of_a_bench,_front_view-2.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/4_4_a_parking_meter_on_the_right_of_a_bench,_front_view-2.gif" alt="">
+                </div>
+            </div>
+            <div class="results-container">
+                <div class="result-item" style="text-align: center; padding: 50px 0">
+                    <p>a snowboard on the bottom of a kite, front view</p>
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/5_1_a_snowboard_on_the_bottom_of_a_kite,_front_view-1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/5_2_a_snowboard_on_the_bottom_of_a_kite,_front_view-1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/5_3_a_snowboard_on_the_bottom_of_a_kite,_front_view-1.gif" alt="">
+                </div>
+                <div class="result-item">
+                    <img src="images/spatial_gif/5_4_a_snowboard_on_the_bottom_of_a_kite,_front_view-1.gif" alt="">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="section">
+            <h2>Multi-Action Video Generation</h2>
+            <div>
+                <center><img src="images/compositional_7.png" alt="">
+                <p><b>Token Swapping.</b> Qualitative comparison between the results generated using the FIFO [4] baseline and with the token swapping method.</p>
+                </center>
+            </div> 
+            
+            <div>
+                <center><img src="images/compositional_8.png" alt="">
+                <p><b>Latent Interpolation.</b> Qualitative comparison between the results generated using the FIFO [4] baseline and with our proposed optimization method for MAVG. In our case, the bench remains consistent and avoids hallucination.</p>
+                </center>
+            </div> 
+
+        </div>
+
+        <div class="section">
+            <h2>References</h2>
+            <p>[1] Chen, H., Zhang, Y., Cun, X., Xia, M., Wang, X., Weng, C., & Shan, Y. (2024). Videocrafter2: Overcoming data limitations for high-quality video diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (pp. 7310-7320).</p>
+            <p>[2] Agarwal, A., Karanam, S., Joseph, K. J., Saxena, A., Goswami, K., & Srinivasan, B. V. (2023). A-star: Test-time attention segregation and retention for text-to-image synthesis. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 2283-2293).</p>
+            <p>[3] Huang, Z., He, Y., Yu, J., Zhang, F., Si, C., Jiang, Y., ... & Liu, Z. (2024). Vbench: Comprehensive benchmark suite for video generative models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (pp. 21807-21818).</p>
+            <p>[4] Kim, J., Kang, J., Choi, J., & Han, B. (2024). Fifo-diffusion: Generating infinite videos from text without training. Advances in Neural Information Processing Systems, 37, 89834-89868.</p>
+            <p>[5] Chefer, H., Alaluf, Y., Vinker, Y., Wolf, L., & Cohen-Or, D. (2023). Attend-and-excite: Attention-based semantic guidance for text-to-image diffusion models. ACM transactions on Graphics (TOG), 42(4), 1-10.</p>
+        </div>
+
+        <!-- <div class="section">
+            <h2>Video</h2>
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/your-video-id" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div> -->
+
+        <!-- <div class="section">
+            <h2>Code and Implementation</h2>
+            <p>
+                Provide details about the code and how to use it. Include instructions for setting up the environment, running the main scripts, and any dependencies required. For example, you might mention the use of Python, PyTorch, and specific libraries.
+            </p>
+            <p><strong>Setup Instructions:</strong></p>
+            <pre>
+git clone https://github.com/your-repo.git
+cd your-repo
+conda env create -f environment.yml
+conda activate your-env
+python main_script.py --base_dir='path/to/data' --param='value'
+            </pre>
+            <a href="https://github.com/your-repo">Access Code on GitHub</a>
+        </div>
+
+        <div class="section">
+            <h2>Contact</h2>
+            <p>
+                For questions or inquiries, please contact: <a href="mailto:your-email@domain.edu">your-email@domain.edu</a>
+            </p>
+        </div> -->
+    </div>
+
+    <footer>
+        <!-- <p>© 2025 Your University. All rights reserved.</p> -->
+        <p>© 2025</p>
+    </footer>
+
+    <script>
+        // Add any lightweight JavaScript for interactivity, e.g., smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
