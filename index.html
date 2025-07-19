@@ -148,7 +148,7 @@
         <div class="section">
             <h2>Abstract</h2>
             <p>
-                Existing pre-trained text-to-video diffusion models can generate high-quality videos, but often struggle with misalignment between the generated content and the input text, particularly while composing scenes with multiple objects. To address this, we propose a simple, training-free approach for compositional video generation from text. We introduce Video-ASTAR, for test-time aggregation and segregation of attention with a novel Centroid Loss to enhance alignment, which enables the generation of multiple objects in the scene, modeling the actions and interactions. We further extend our approach to the Multi-Action video generation setting, where only the described action should vary across a sequence of prompts. To ensure coherent action transitions, we introduce a token-swapping and latent interpolation strategy. Extensive experiments and ablation studies show that our method significantly outperforms baseline approaches, generating videos with improved semantic and compositional consistency with temporal coherence.
+                Existing pre-trained text-to-video diffusion models can generate high-quality videos, but often struggle with misalignment between the generated content and the input text, particularly while composing scenes with multiple objects. To tackle this issue, we propose a straightforward, training-free approach for compositional video generation from text. We introduce Video-ASTAR, for test-time aggregation and segregation of attention with a novel centroid loss to enhance alignment, which enables the generation of multiple objects in the scene, modeling the actions and interactions. Additionally, we extend our approach to the Multi-Action video generation setting, where only the specified action should vary across a sequence of prompts. To ensure coherent action transitions, we introduce a novel token-swapping and latent interpolation strategy. Extensive experiments and ablation studies show that our method significantly outperforms baseline methods, generating videos with improved semantic and compositional consistency alongside improved temporal coherence.
             </p>
         </div>
 
@@ -177,11 +177,9 @@
 
         <div class="section">
             <h2>Video-ASTAR</h2>
-            <center><img src="images/compositional_2.png" alt="" width="60%"  height="60%">
+            <center><img src="images/compositional_2.png" alt="" width="90%"  height="90%">
             <p><b>Loss Functions.</b> The figure shows how each loss operates on the attention map generated for each token.</p>
             </center>
-
-            For compositional video generation, we apply modified ASTAR [2] and Centroid Loss directly to the accumulated attention maps from the Spatial Transformer. While ASTAR was initially proposed for images, we extend it for video frames by adding the temporal dimension to the loss function. We also modified the mask generation method, replacing the graph component computation with mean thresholding <em>i.e.</em>, attention values below the mean are masked to zero and above the mean to one for each frame. The mask from the first video frame is used for the attention retention loss, resulting in stable video generation with rich details.
 
         </div>
 
@@ -201,7 +199,7 @@
 
             We performed an ablation study to evaluate the effect of different optimization methods on the VideoCrafter2 (VC2) [1] pipeline. As shown in above figures for the given prompts, the baseline VC2 fails to generate the object "bench." Applying the A&E loss [5] successfully recovers the missing object for the first prompt but fails on the second and shows alignment issues for the first prompt. In contrast, incorporating Video-ASTAR recovers the missing entities in both prompts, demonstrating better contextual understanding and consistent generation across video frames.
             <br/>
-            The Video-ASTAR loss comprises two components: attention segregation and attention retention. Attention segregation minimizes overlap between attention maps of different entities within a frame, while attention retention prevents attention values from fading during denoising by applying an attention mask. The above figure illustrates the impact of different thresholding strategies and mask types. As shown in (b–c), using the median value as a threshold fails to capture all entities described in the text, whereas the mean threshold successfully recovers them. Panel (d–e) demonstrates that applying a binary mask from the first frame across all frames preserves the context, such as accurately maintaining the presence of a "big rock." In our final optimization, we use the mean value as the threshold for generating a binary mask and apply the first frame binary mask across all the video frames.
+            The Video-ASTAR loss combines two components: attention segregation and attention retention. Attention segregation reduces the overlap between attention maps of different entities within a frame. Attention retention maintains token focus during denoising by applying a consistent attention mask. In the above Figure (b–c) shows that fixed thresholding fails to capture all entities, while a mean-based threshold recovers them effectively. Figures \ref{fig:different_methods_astar_ablation}(d–e) demonstrate that reusing a binary mask from the first frame across all frames helps preserve context, such as consistently representing a "big rock." In our final setup, we generate a binary mask using the mean threshold from the first frame and apply it across the video. We also introduce a centroid-based loss to improve compositional generation by enhancing entity interaction in attention maps. Figure \ref{fig:effectofloss} compares different optimization methods on VideoCrafter2, showing that our approach better captures the entities described in the prompt. We provide further results and details in the supplement.
 
             <div>
                 <center><img src="images/compositional_5.png" alt="" width="50%"  height="50%">
